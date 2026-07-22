@@ -4,17 +4,16 @@
 #   sudo ln -s /etc/nginx/sites-available/ukusi /etc/nginx/sites-enabled/
 #   sudo nginx -t && sudo systemctl reload nginx
 #   sudo certbot --nginx -d ukusi-nsk.ru -d www.ukusi-nsk.ru
+#
+# /uploads/ намеренно НЕ отдаётся напрямую через nginx (alias) — проект лежит
+# в /root/site-, а каталог /root по умолчанию закрыт для всех, кроме root,
+# из-за чего nginx (работает от www-data/nginx) не может прочитать файлы и
+# отдаёт битую картинку. Проще и надёжнее прогонять всё через Next.js —
+# он и так уже работает от root и сам умеет отдавать файлы из /public.
 
 server {
     listen 80;
     server_name ukusi-nsk.ru www.ukusi-nsk.ru;
-
-    # Загрузки картинок — отдаём напрямую, без прокси на Node
-    location /uploads/ {
-        alias /root/site-/public/uploads/;
-        expires 30d;
-        access_log off;
-    }
 
     location / {
         proxy_pass http://127.0.0.1:3000;

@@ -19,16 +19,13 @@ command -v nginx >/dev/null   || die "nginx не установлен — сна
 command -v certbot >/dev/null || die "certbot не установлен — сначала: bash deploy/server-setup.sh"
 
 info "Пишу конфиг nginx для $DOMAIN (проект: $PROJECT_ROOT)..."
+# /uploads/ намеренно НЕ отдаётся напрямую (alias) — проект лежит в /root/...,
+# каталог /root закрыт для всех, кроме root, nginx (www-data/nginx) не смог бы
+# прочитать файлы. Пускаем всё через Next.js, он и так работает от root.
 cat > /etc/nginx/sites-available/ukusi <<EOF
 server {
     listen 80;
     server_name $DOMAIN $WWW_DOMAIN;
-
-    location /uploads/ {
-        alias $PROJECT_ROOT/public/uploads/;
-        expires 30d;
-        access_log off;
-    }
 
     location / {
         proxy_pass http://127.0.0.1:3000;
