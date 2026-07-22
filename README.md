@@ -81,57 +81,71 @@ SQLite-файл: `data/furshet.db`
 Проект рассчитан на сервер с постоянно работающим Node.js-процессом (не serverless/Vercel) —
 из-за SQLite-файла и Telegram-бота, которому нужен один живой процесс на polling.
 
-### 1. Подготовка сервера
+Текущий боевой сервер: Timeweb Cloud, IP `201.24.60.88`, домен **ukusi-nsk.ru** уже
+привязан (DNS A-запись → IP). Проект на сервере лежит в `~/site-`.
+
+### 1. Подготовка сервера (один раз)
 
 ```bash
-# Ubuntu/Debian
-sudo apt update && sudo apt install -y nodejs npm build-essential git nginx
-sudo npm install -g pm2
-node -v   # нужен 18+
+cd ~/site-
+sudo bash deploy/server-setup.sh
 ```
 
-`build-essential` нужен, чтобы собрался нативный модуль `better-sqlite3`.
+Ставит Node.js 20, PM2, nginx, certbot, sqlite3 и всё нужное для сборки нативных
+модулей (`build-essential`). Готовый список того, что устанавливается — прямо в
+файле [`deploy/server-setup.sh`](deploy/server-setup.sh).
 
 ### 2. Код и зависимости
 
 ```bash
-git clone <ваш-репозиторий> furshet && cd furshet
-# или загрузите архив проекта на сервер и распакуйте
+cd ~/site-
+git pull origin main
 npm ci
 ```
 
 ### 3. `.env`
 
-Скопируйте свой `.env` на сервер (он не попадает в git) и проверьте:
+На сервере уже должен лежать `.env` (в git не попадает). Проверьте:
 
-- `NEXT_PUBLIC_SITE_URL` — ваш домен с `https://`, например `https://furshet-nsk.ru`
-- `ADMIN_PASSWORD` — **обязательно смените** дефолтный пароль на сложный
-- `TELEGRAM_BOT_TOKEN`, `OWNER_USERNAME`, `SESSION_SECRET` — как в локальной версии
+- `NEXT_PUBLIC_SITE_URL=http://ukusi-nsk.ru` (после получения SSL — поменять на `https://`)
+- `ADMIN_PASSWORD` — сложный пароль (или сменить прямо в админке, вкладка «Пароль»)
+- `TELEGRAM_BOT_TOKEN`, `OWNER_USERNAME`, `SESSION_SECRET`, `SMTP_*` — заполнены
 
 ⚠️ Бот использует long polling — держите **только один** запущенный экземпляр бота
 одновременно (или локально, или на сервере, не оба сразу), иначе Telegram вернёт
 ошибку конфликта 409.
 
-### 4. Сборка и запуск через PM2
+### 4. nginx + бесплатный SSL (Let's Encrypt)
+
+```bash
+cd ~/site-
+sudo bash deploy/setup-nginx-ssl.sh
+```
+
+Настраивает nginx как реверс-прокси на порт 3000 для `ukusi-nsk.ru` /
+`www.ukusi-nsk.ru` и сразу получает сертификат Let's Encrypt (спросит только
+почту для уведомлений). Платный SSL не нужен — подробности были обсуждены
+отдельно, коротко: Let's Encrypt даёт тот же уровень доверия браузеров бесплатно.
+
+### 5. Запуск сайта и бота
+
+Через PM2 (рекомендуется — сам поднимет процессы после падения и после
+перезагрузки сервера):
 
 ```bash
 npm run build
 pm2 start ecosystem.config.js
 pm2 save
-pm2 startup   # выведет команду — выполните её, чтобы PM2 поднимался при перезагрузке сервера
+pm2 startup   # выведет команду — выполните её, чтобы PM2 поднимался при ребуте
 ```
 
-PM2 автоматически перезапустит процессы при падении и после ребута сервера.
 Логи: `pm2 logs furshet-web`, `pm2 logs furshet-bot`.
 
-### 5. nginx + HTTPS
+Либо через `./start.sh prod` (проще, но без автоперезапуска при падении процесса —
+для быстрой проверки годится, для длительной работы лучше PM2).
 
-Пример конфига: [`deploy/nginx.conf.example`](deploy/nginx.conf.example) — реверс-прокси на
-порт 3000 плюс отдача `/uploads/` напрямую. HTTPS-сертификат:
-
-```bash
-sudo certbot --nginx -d your-domain.ru -d www.your-domain.ru
-```
+После этого шага `http://ukusi-nsk.ru` (или `https://` после шага 4) должен
+показывать сайт.
 
 ### 6. Бэкапы БД
 

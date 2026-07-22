@@ -30,8 +30,8 @@ ADMIN_PASSWORD=admin
 OWNER_USERNAME=ellieene
 SESSION_SECRET=
 
-# Домен сайта после покупки (без слэша на конце) — нужен для sitemap.xml, robots.txt и SEO
-NEXT_PUBLIC_SITE_URL=
+# Домен сайта (без слэша на конце) — нужен для sitemap.xml, robots.txt, SEO и ссылок бота
+NEXT_PUBLIC_SITE_URL=http://ukusi-nsk.ru
 
 # SMTP для ежемесячных Excel-отчётов по заказам на почту
 SMTP_HOST=smtp.mail.ru
@@ -132,7 +132,11 @@ else
   warn "Сайт ещё стартует — смотрите лог: .run/web.log"
   info "Адрес:          http://localhost:3000"
 fi
-info "Админка:        http://localhost:3000/admin"
+SITE_URL="$(grep '^NEXT_PUBLIC_SITE_URL=' .env | head -1 | cut -d= -f2-)"
+if [[ -n "$SITE_URL" ]]; then
+  info "Домен:          $SITE_URL (работает, если настроен nginx — см. deploy/setup-nginx-ssl.sh)"
+fi
+info "Админка:        http://localhost:3000/staff-4f6867e4"
 info "Лог сайта:      .run/web.log"
 info "Лог бота:       .run/bot.log"
 info "Остановка:      ./stop.sh"
