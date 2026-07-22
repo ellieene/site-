@@ -6,12 +6,17 @@ import path from "path";
 import dotenv from "dotenv";
 import cron from "node-cron";
 import { sendOrdersReport, getPreviousMonthRange } from "../lib/report";
-import { SITE_URL } from "../lib/site";
 
 dotenv.config({ path: path.join(process.cwd(), ".env") });
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const OWNER = (process.env.OWNER_USERNAME || "annbereg").toLowerCase();
+// Читаем ПОСЛЕ dotenv.config() выше — если импортировать SITE_URL из lib/site.ts,
+// он вычислится ДО того, как .env успеет загрузиться, и всегда будет localhost
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(
+  /\/+$/,
+  ""
+);
 
 if (!TOKEN) {
   console.error("TELEGRAM_BOT_TOKEN не задан в .env");
